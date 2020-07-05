@@ -22,11 +22,23 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
         private const string CtrlValue = "CTRL";
         private const string ShiftValue = "SHIFT";
         private const string AltValue = "ALT";
-        private FlyoutPlacementMode? _currentFlyoutPlacement;
+
+        /// <summary>
+        /// Gets or sets the current flyout placement, internal because the child menu item needs it to respect the menu direction of submenus
+        /// </summary>
+        internal FlyoutPlacementMode? CurrentFlyoutPlacement { get; set; }
 
         private static bool NavigateUsingKeyboard(KeyEventArgs args, Menu menu, Orientation orientation)
         {
-            var element = FocusManager.GetFocusedElement();
+            object element;
+            if (ControlHelpers.IsXamlRootAvailable && menu.XamlRoot != null)
+            {
+                element = FocusManager.GetFocusedElement(menu.XamlRoot);
+            }
+            else
+            {
+                element = FocusManager.GetFocusedElement();
+            }
 
             if (element is MenuFlyoutPresenter &&
                 ((args.VirtualKey == VirtualKey.Down) ||
@@ -44,10 +56,10 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
                 menu.UpdateMenuItemsFlyoutPlacement();
 
                 if (args.VirtualKey == VirtualKey.Enter ||
-                    ((args.VirtualKey == VirtualKey.Down) && menu._currentFlyoutPlacement == FlyoutPlacementMode.Bottom) ||
-                    ((args.VirtualKey == VirtualKey.Up) && menu._currentFlyoutPlacement == FlyoutPlacementMode.Top) ||
-                    ((args.VirtualKey == VirtualKey.Left) && menu._currentFlyoutPlacement == FlyoutPlacementMode.Left) ||
-                    ((args.VirtualKey == VirtualKey.Right) && menu._currentFlyoutPlacement == FlyoutPlacementMode.Right))
+                    ((args.VirtualKey == VirtualKey.Down) && menu.CurrentFlyoutPlacement == FlyoutPlacementMode.Bottom) ||
+                    ((args.VirtualKey == VirtualKey.Up) && menu.CurrentFlyoutPlacement == FlyoutPlacementMode.Top) ||
+                    ((args.VirtualKey == VirtualKey.Left) && menu.CurrentFlyoutPlacement == FlyoutPlacementMode.Left) ||
+                    ((args.VirtualKey == VirtualKey.Right) && menu.CurrentFlyoutPlacement == FlyoutPlacementMode.Right))
                 {
                     menu.SelectedMenuItem.ShowMenu();
                     return true;
@@ -68,10 +80,10 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
                 }
             }
 
-            if ((menu._currentFlyoutPlacement == FlyoutPlacementMode.Left &&
+            if ((menu.CurrentFlyoutPlacement == FlyoutPlacementMode.Left &&
                  args.VirtualKey == VirtualKey.Right) ||
                  (args.VirtualKey == VirtualKey.Left &&
-                 menu._currentFlyoutPlacement != FlyoutPlacementMode.Left))
+                 menu.CurrentFlyoutPlacement != FlyoutPlacementMode.Left))
             {
                 if (element is MenuFlyoutItem)
                 {
@@ -94,9 +106,9 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
             }
 
             if ((args.VirtualKey == VirtualKey.Right &&
-                menu._currentFlyoutPlacement != FlyoutPlacementMode.Left) ||
+                menu.CurrentFlyoutPlacement != FlyoutPlacementMode.Left) ||
                 (args.VirtualKey == VirtualKey.Left &&
-                menu._currentFlyoutPlacement == FlyoutPlacementMode.Left))
+                menu.CurrentFlyoutPlacement == FlyoutPlacementMode.Left))
             {
                 if (element is MenuFlyoutItem)
                 {
@@ -166,18 +178,18 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
         {
             var placementMode = GetMenuFlyoutPlacementMode();
 
-            if (placementMode == _currentFlyoutPlacement)
+            if (placementMode == CurrentFlyoutPlacement)
             {
                 return false;
             }
 
-            _currentFlyoutPlacement = placementMode;
+            CurrentFlyoutPlacement = placementMode;
 
             foreach (MenuItem menuItem in Items)
             {
                 if (menuItem.MenuFlyout != null)
                 {
-                    menuItem.MenuFlyout.Placement = _currentFlyoutPlacement.Value;
+                    menuItem.MenuFlyout.Placement = CurrentFlyoutPlacement.Value;
                 }
             }
 
@@ -186,14 +198,30 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
 
         internal FlyoutPlacementMode GetMenuFlyoutPlacementMode()
         {
-            var ttv = TransformToVisual(Window.Current.Content);
+            UIElement content;
+            double height;
+            double width;
+            if (ControlHelpers.IsXamlRootAvailable && XamlRoot != null)
+            {
+                content = XamlRoot.Content;
+                height = XamlRoot.Size.Height;
+                width = XamlRoot.Size.Width;
+            }
+            else
+            {
+                content = Window.Current.Content;
+                height = Window.Current.Bounds.Height;
+                width = Window.Current.Bounds.Width;
+            }
+
+            var ttv = TransformToVisual(content);
             var menuCoords = ttv.TransformPoint(new Point(0, 0));
 
             if (Orientation == Orientation.Horizontal)
             {
                 var menuCenter = menuCoords.Y + (ActualHeight / 2);
 
-                if (menuCenter <= Window.Current.Bounds.Height / 2)
+                if (menuCenter <= height / 2)
                 {
                     return FlyoutPlacementMode.Bottom;
                 }
@@ -206,7 +234,7 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
             {
                 var menuCenter = menuCoords.X + (ActualWidth / 2);
 
-                if (menuCenter <= Window.Current.Bounds.Width / 2)
+                if (menuCenter <= width / 2)
                 {
                     return FlyoutPlacementMode.Right;
                 }
@@ -283,7 +311,7 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
 
         internal void CalculateBounds()
         {
-            var ttv = TransformToVisual(Window.Current.Content);
+            var ttv = TransformToVisual(ControlHelpers.IsXamlRootAvailable && XamlRoot != null ? XamlRoot.Content : Window.Current.Content);
             Point screenCoords = ttv.TransformPoint(new Point(0, 0));
             _bounds.X = screenCoords.X;
             _bounds.Y = screenCoords.Y;

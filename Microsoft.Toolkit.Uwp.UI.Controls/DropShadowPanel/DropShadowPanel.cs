@@ -86,6 +86,8 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
                 }
             }
 
+            UpdateShadowMask();
+
             base.OnContentChanged(oldContent, newContent);
         }
 
@@ -162,7 +164,7 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
                 return;
             }
 
-            if (Content != null)
+            if (Content != null && IsMasked)
             {
                 CompositionBrush mask = null;
 

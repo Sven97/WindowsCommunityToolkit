@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,6 +22,7 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
     /// <summary>
     /// Menu Item is the items main container for Class Menu control
     /// </summary>
+    [Obsolete("This control will be removed in a future major release. Please use the MenuBar control from the WinUI Library instead.")]
     public class MenuItem : HeaderedItemsControl
     {
         private const string FlyoutButtonName = "FlyoutButton";
@@ -109,6 +111,11 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
                 MenuFlyout.Closed -= MenuFlyout_Closed;
             }
 
+            if (ControlHelpers.IsXamlRootAvailable && XamlRoot != null)
+            {
+                MenuFlyout.XamlRoot = XamlRoot;
+            }
+
             if (FlyoutButton != null)
             {
                 FlyoutButton.PointerExited -= FlyoutButton_PointerExited;
@@ -130,6 +137,11 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
                 }
             }
 
+            if (_parentMenu?.CurrentFlyoutPlacement != null)
+            {
+                MenuFlyout.Placement = _parentMenu.CurrentFlyoutPlacement.Value;
+            }
+
             UpdateEnabledVisualState();
 
             base.OnApplyTemplate();
@@ -143,7 +155,17 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
 
         internal void CalculateBounds()
         {
-            var ttv = TransformToVisual(Window.Current.Content);
+            UIElement content;
+            if (ControlHelpers.IsXamlRootAvailable && XamlRoot != null)
+            {
+                content = XamlRoot.Content;
+            }
+            else
+            {
+                content = Window.Current.Content;
+            }
+
+            var ttv = TransformToVisual(content);
             Point screenCoords = ttv.TransformPoint(new Point(0, 0));
             _bounds.X = screenCoords.X;
             _bounds.Y = screenCoords.Y;
@@ -314,7 +336,26 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
 
             if (!_menuFlyoutRepositioned)
             {
-                var popup = VisualTreeHelper.GetOpenPopups(Window.Current).FirstOrDefault(p => p.Child is MenuFlyoutPresenter);
+                IReadOnlyList<Popup> popups;
+                UIElement content;
+                double outerContentWidth;
+                double outerContentHeight;
+                if (ControlHelpers.IsXamlRootAvailable && MenuFlyout.XamlRoot != null)
+                {
+                    popups = VisualTreeHelper.GetOpenPopupsForXamlRoot(MenuFlyout.XamlRoot);
+                    content = MenuFlyout.XamlRoot.Content;
+                    outerContentWidth = MenuFlyout.XamlRoot.Size.Width;
+                    outerContentHeight = MenuFlyout.XamlRoot.Size.Height;
+                }
+                else
+                {
+                    popups = VisualTreeHelper.GetOpenPopups(Window.Current);
+                    content = Window.Current.Content;
+                    outerContentWidth = Window.Current.Bounds.Width;
+                    outerContentHeight = Window.Current.Bounds.Height;
+                }
+
+                var popup = popups.FirstOrDefault(p => p.Child is MenuFlyoutPresenter);
 
                 if (popup != null)
                 {
@@ -322,11 +363,11 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
                     var height = mfp.ActualHeight;
                     var width = mfp.ActualWidth;
 
-                    var flytoutButtonPoint = FlyoutButton.TransformToVisual(Window.Current.Content).TransformPoint(new Point(0, 0));
+                    var flytoutButtonPoint = FlyoutButton.TransformToVisual(content).TransformPoint(new Point(0, 0));
 
-                    if ((width > Window.Current.Bounds.Width - flytoutButtonPoint.X &&
+                    if ((width > outerContentWidth - flytoutButtonPoint.X &&
                         (MenuFlyout.Placement == FlyoutPlacementMode.Bottom)) ||
-                        (height > Window.Current.Bounds.Height - flytoutButtonPoint.Y &&
+                        (height > outerContentHeight - flytoutButtonPoint.Y &&
                         (MenuFlyout.Placement == FlyoutPlacementMode.Right)))
                     {
                         ShowMenuRepositioned(width, height);

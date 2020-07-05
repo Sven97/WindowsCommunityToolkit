@@ -65,7 +65,7 @@ namespace Microsoft.Toolkit.Parsers.Markdown.Inlines
         }
 
         /// <summary>
-        /// Attempts to parse an image e.g. "![Toolkit logo](https://raw.githubusercontent.com/Microsoft/WindowsCommunityToolkit/master/Microsoft.Toolkit.Uwp.SampleApp/Assets/ToolkitLogo.png)".
+        /// Attempts to parse an image e.g. "![Toolkit logo](https://raw.githubusercontent.com/windows-toolkit/WindowsCommunityToolkit/master/Microsoft.Toolkit.Uwp.SampleApp/Assets/ToolkitLogo.png)".
         /// </summary>
         /// <param name="markdown"> The markdown text. </param>
         /// <param name="start"> The location to start parsing. </param>
@@ -73,8 +73,6 @@ namespace Microsoft.Toolkit.Parsers.Markdown.Inlines
         /// <returns> A parsed markdown image, or <c>null</c> if this is not a markdown image. </returns>
         internal static InlineParseResult Parse(string markdown, int start, int end)
         {
-            int refstart = 0;
-
             // Expect a '!' character.
             if (start >= end || markdown[start] != '!')
             {
@@ -120,7 +118,7 @@ namespace Microsoft.Toolkit.Parsers.Markdown.Inlines
 
             if (pos < end && markdown[pos] == '[')
             {
-                refstart = pos;
+                int refstart = pos;
 
                 // Find the reference ']' character
                 while (pos < end)

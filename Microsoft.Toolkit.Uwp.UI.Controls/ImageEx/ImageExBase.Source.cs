@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.UI.Xaml;
@@ -14,7 +15,7 @@ using Windows.UI.Xaml.Media.Imaging;
 namespace Microsoft.Toolkit.Uwp.UI.Controls
 {
     /// <summary>
-    /// Shared Code for ImageEx and RoundImageEx
+    /// Base code for ImageEx
     /// </summary>
     public partial class ImageExBase
     {
@@ -26,6 +27,7 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
         private Uri _uri;
         private bool _isHttpSource;
         private CancellationTokenSource _tokenSource = null;
+        private object _lazyLoadingSource;
 
         /// <summary>
         /// Gets or sets the source used by the image
@@ -40,9 +42,29 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
         {
             var control = d as ImageExBase;
 
+            if (control == null)
+            {
+                return;
+            }
+
             if (e.OldValue == null || e.NewValue == null || !e.OldValue.Equals(e.NewValue))
             {
-                control?.SetSource(e.NewValue);
+                if (IsLazyLoadingSupported)
+                {
+                    if (e.NewValue == null || !control.EnableLazyLoading || control._isInViewport)
+                    {
+                        control._lazyLoadingSource = null;
+                        control.SetSource(e.NewValue);
+                    }
+                    else
+                    {
+                        control._lazyLoadingSource = e.NewValue;
+                    }
+                }
+                else
+                {
+                    control.SetSource(e.NewValue);
+                }
             }
         }
 
@@ -121,60 +143,91 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
         {
             if (_uri != null)
             {
-                if (IsCacheEnabled && _isHttpSource)
+                if (IsCacheEnabled)
                 {
-                    try
+                    switch (CachingStrategy)
                     {
-                        var propValues = new List<KeyValuePair<string, object>>();
-
-                        if (DecodePixelHeight > 0)
-                        {
-                            propValues.Add(new KeyValuePair<string, object>(nameof(DecodePixelHeight), DecodePixelHeight));
-                        }
-
-                        if (DecodePixelWidth > 0)
-                        {
-                            propValues.Add(new KeyValuePair<string, object>(nameof(DecodePixelWidth), DecodePixelWidth));
-                        }
-
-                        if (propValues.Count > 0)
-                        {
-                            propValues.Add(new KeyValuePair<string, object>(nameof(DecodePixelType), DecodePixelType));
-                        }
-
-                        var img = await ImageCache.Instance.GetFromCacheAsync(imageUri, true, _tokenSource.Token, propValues);
-
-                        lock (LockObj)
-                        {
-                            // If you have many imageEx in a virtualized listview for instance
-                            // controls will be recycled and the uri will change while waiting for the previous one to load
-                            if (_uri == imageUri)
-                            {
-                                AttachSource(img);
-                                ImageExOpened?.Invoke(this, new ImageExOpenedEventArgs());
-                                VisualStateManager.GoToState(this, LoadedState, true);
-                            }
-                        }
+                        case ImageExCachingStrategy.Custom when _isHttpSource:
+                            await SetHttpSourceCustomCached(imageUri);
+                            break;
+                        case ImageExCachingStrategy.Custom:
+                        case ImageExCachingStrategy.Internal:
+                        default:
+                            AttachSource(new BitmapImage(imageUri));
+                            break;
                     }
-                    catch (OperationCanceledException)
+                }
+                else if (string.Equals(_uri.Scheme, "data", StringComparison.OrdinalIgnoreCase))
+                {
+                    var source = _uri.OriginalString;
+                    const string base64Head = "base64,";
+                    var index = source.IndexOf(base64Head);
+                    if (index >= 0)
                     {
-                        // nothing to do as cancellation has been requested.
-                    }
-                    catch (Exception e)
-                    {
-                        lock (LockObj)
-                        {
-                            if (_uri == imageUri)
-                            {
-                                ImageExFailed?.Invoke(this, new ImageExFailedEventArgs(e));
-                                VisualStateManager.GoToState(this, FailedState, true);
-                            }
-                        }
+                        var bytes = Convert.FromBase64String(source.Substring(index + base64Head.Length));
+                        var bitmap = new BitmapImage();
+                        AttachSource(bitmap);
+                        await bitmap.SetSourceAsync(new MemoryStream(bytes).AsRandomAccessStream());
                     }
                 }
                 else
                 {
-                    AttachSource(new BitmapImage(_uri));
+                    AttachSource(new BitmapImage(_uri)
+                    {
+                        CreateOptions = BitmapCreateOptions.IgnoreImageCache
+                    });
+                }
+            }
+        }
+
+        private async Task SetHttpSourceCustomCached(Uri imageUri)
+        {
+            try
+            {
+                var propValues = new List<KeyValuePair<string, object>>();
+
+                if (DecodePixelHeight > 0)
+                {
+                    propValues.Add(new KeyValuePair<string, object>(nameof(DecodePixelHeight), DecodePixelHeight));
+                }
+
+                if (DecodePixelWidth > 0)
+                {
+                    propValues.Add(new KeyValuePair<string, object>(nameof(DecodePixelWidth), DecodePixelWidth));
+                }
+
+                if (propValues.Count > 0)
+                {
+                    propValues.Add(new KeyValuePair<string, object>(nameof(DecodePixelType), DecodePixelType));
+                }
+
+                var img = await ImageCache.Instance.GetFromCacheAsync(imageUri, true, _tokenSource.Token, propValues);
+
+                lock (LockObj)
+                {
+                    // If you have many imageEx in a virtualized listview for instance
+                    // controls will be recycled and the uri will change while waiting for the previous one to load
+                    if (_uri == imageUri)
+                    {
+                        AttachSource(img);
+                        ImageExOpened?.Invoke(this, new ImageExOpenedEventArgs());
+                        VisualStateManager.GoToState(this, LoadedState, true);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // nothing to do as cancellation has been requested.
+            }
+            catch (Exception e)
+            {
+                lock (LockObj)
+                {
+                    if (_uri == imageUri)
+                    {
+                        ImageExFailed?.Invoke(this, new ImageExFailedEventArgs(e));
+                        VisualStateManager.GoToState(this, FailedState, true);
+                    }
                 }
             }
         }

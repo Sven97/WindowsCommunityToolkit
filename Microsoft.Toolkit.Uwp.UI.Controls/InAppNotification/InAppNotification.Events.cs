@@ -3,7 +3,10 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using Microsoft.Toolkit.Uwp.Extensions;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Automation;
+using Windows.UI.Xaml.Automation.Peers;
 
 namespace Microsoft.Toolkit.Uwp.UI.Controls
 {
@@ -40,21 +43,46 @@ namespace Microsoft.Toolkit.Uwp.UI.Controls
         private void DismissTimer_Tick(object sender, object e)
         {
             Dismiss(InAppNotificationDismissKind.Timeout);
-            _dismissTimer.Stop();
         }
 
         private void OpenAnimationTimer_Tick(object sender, object e)
         {
-            _animationTimer.Stop();
-            Opened?.Invoke(this, EventArgs.Empty);
-            _animationTimer.Tick -= OpenAnimationTimer_Tick;
+            lock (_openAnimationTimer)
+            {
+                _openAnimationTimer.Stop();
+                Opened?.Invoke(this, EventArgs.Empty);
+                SetValue(AutomationProperties.NameProperty, StringExtensions.GetLocalized("WindowsCommunityToolkit_InAppNotification_NameProperty", "/Microsoft.Toolkit.Uwp.UI.Controls/Resources"));
+                if (ContentTemplateRoot != null)
+                {
+                    var peer = FrameworkElementAutomationPeer.CreatePeerForElement(ContentTemplateRoot);
+                    if (Content?.GetType() == typeof(string))
+                    {
+                        AutomateTextNotification(peer, Content.ToString());
+                    }
+                }
+            }
         }
 
-        private void DismissAnimationTimer_Tick(object sender, object e)
+        private void AutomateTextNotification(AutomationPeer peer, string message)
         {
-            _animationTimer.Stop();
-            Closed?.Invoke(this, new InAppNotificationClosedEventArgs(_lastDismissKind));
-            _animationTimer.Tick -= DismissAnimationTimer_Tick;
+            if (peer != null)
+            {
+                peer.SetFocus();
+                peer.RaiseNotificationEvent(
+                    AutomationNotificationKind.Other,
+                    AutomationNotificationProcessing.ImportantMostRecent,
+                    StringExtensions.GetLocalized("WindowsCommunityToolkit_InAppNotification_Events_NewNotificationMessage", "/Microsoft.Toolkit.Uwp.UI.Controls/Resources") + message,
+                    Guid.NewGuid().ToString());
+            }
+        }
+
+        private void ClosingAnimationTimer_Tick(object sender, object e)
+        {
+            lock (_closingAnimationTimer)
+            {
+                _closingAnimationTimer.Stop();
+                Closed?.Invoke(this, new InAppNotificationClosedEventArgs(_lastDismissKind));
+            }
         }
     }
 }

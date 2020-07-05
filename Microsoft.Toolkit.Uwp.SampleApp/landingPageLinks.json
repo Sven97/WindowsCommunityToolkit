@@ -1,6 +1,6 @@
 {
   "new-section-title": "What's New",
-  "new-samples": [ "DataGrid", "PlannerTaskList", "PowerBIEmbedded", "Twitter Service", "LinkedIn Service" ],
+  "new-samples": [ "TokenizingTextBox", "PipelineBrush", "WrapLayout", "IsNullOrEmptyStateTrigger", "High Performance APIs" ],
   "resources": [
     {
       "title": "Toolkit",
@@ -15,19 +15,19 @@
         },
         {
           "title": "GitHub Issues",
-          "url": "https://github.com/Microsoft/WindowsCommunityToolkit/issues"
+          "url": "https://github.com/windows-toolkit/WindowsCommunityToolkit/issues"
         },
         {
           "title": "Roadmap",
-          "url": "https://github.com/Microsoft/WindowsCommunityToolkit/milestones"
-        },
-        {
-          "title": "UserVoice",
-          "url": "https://wpdev.uservoice.com/forums/110705-universal-windows-platform/category/193402-uwp-community-toolkit"
+          "url": "https://github.com/windows-toolkit/WindowsCommunityToolkit/milestones"
         },
         {
           "title": "Contributors",
-          "url": "https://github.com/Microsoft/WindowsCommunityToolkit/graphs/contributors"
+          "url": "https://github.com/windows-toolkit/WindowsCommunityToolkit/graphs/contributors"
+        },
+        {
+          "title": "UWP Community Discord",
+          "url": "https://discord.gg/zBA5aCn"
         }
       ]
     },
@@ -40,23 +40,35 @@
         },
         {
           "title": "Get started with Windows apps",
-          "url": "https://developer.microsoft.com/windows/apps/getstarted"
+          "url": "https://docs.microsoft.com/windows/uwp/get-started/"
         },
         {
           "title": "Windows apps design",
-          "url": "https://developer.microsoft.com/en-us/windows/apps/design"
+          "url": "https://docs.microsoft.com/windows/uwp/design/"
         },
         {
           "title": "Code samples",
-          "url": "https://developer.microsoft.com/en-us/windows/samples"
+          "url": "https://developer.microsoft.com/windows/samples/"
         },
         {
           "title": "UWP app samples",
           "url": "https://github.com/Microsoft/Windows-universal-samples"
         },
         {
+          "title": "XAML Controls Gallery",
+          "url": "https://www.microsoft.com/p/xaml-controls-gallery/9msvh128x2zt"
+        },
+        {
+          "title": "XAML Studio",
+          "url": "https://aka.ms/GetXAMLStudio"
+        },
+        {
+          "title": "Windows UI Library",
+          "url": "https://docs.microsoft.com/uwp/toolkits/winui/"
+        },
+        {
           "title": "Windows Template Studio",
-          "url": "https://github.com/microsoft/windowsTemplateStudio"
+          "url": "https://github.com/microsoft/WindowsTemplateStudio"
         },
         {
           "title": "UI for UWP",
@@ -85,8 +97,8 @@
           "url": "https://github.com/hawkerm/monaco-editor-uwp"
         },
         {
-          "title": "Background photo by Christoffer Engström",
-          "url": "https://unsplash.com/@christoffere"
+          "title": "Background photo: Wrenches Photo by NeONBRAND on Unsplash",
+          "url": "https://unsplash.com/photos/60krlMMeWxU"
         }
       ]
     }

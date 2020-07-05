@@ -14,12 +14,13 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Toolkit.Graph.Converters;
+using Microsoft.Toolkit.Graph.Providers;
 using Microsoft.Toolkit.Uwp.Helpers;
 using Microsoft.Toolkit.Uwp.Input.GazeInteraction;
 using Microsoft.Toolkit.Uwp.SampleApp.Models;
 using Microsoft.Toolkit.Uwp.UI.Animations;
 using Microsoft.Toolkit.Uwp.UI.Controls;
-using Microsoft.Toolkit.Uwp.UI.Controls.Graph;
 using Microsoft.Toolkit.Uwp.UI.Media;
 using Newtonsoft.Json;
 using Windows.Foundation.Metadata;
@@ -31,8 +32,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
 {
     public class Sample
     {
-        private const string _repoOnlineRoot = "https://raw.githubusercontent.com/Microsoft/WindowsCommunityToolkit/";
-        private const string _docsOnlineRoot = "https://raw.githubusercontent.com/MicrosoftDocs/UWPCommunityToolkitDocs/";
+        private const string _docsOnlineRoot = "https://raw.githubusercontent.com/MicrosoftDocs/WindowsCommunityToolkitDocs/";
         private const string _cacheSHAKey = "docs-cache-sha";
 
         private static HttpClient client = new HttpClient();
@@ -72,8 +72,10 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
         internal static async Task<Sample> FindAsync(string category, string name)
         {
             var categories = await Samples.GetCategoriesAsync();
+
+            // Replace any spaces in the category name as it's used for the host part of the URI in deep links and that can't have spaces.
             return categories?
-                .FirstOrDefault(c => c.Name.Equals(category, StringComparison.OrdinalIgnoreCase))?
+                .FirstOrDefault(c => c.Name.Replace(" ", string.Empty).Equals(category, StringComparison.OrdinalIgnoreCase))?
                 .Samples
                 .FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         }
@@ -83,6 +85,8 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
         public string Name { get; set; }
 
         public string Type { get; set; }
+
+        public string Subcategory { get; set; }
 
         public string About { get; set; }
 
@@ -176,7 +180,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
 
         public async Task<string> GetCSharpSourceAsync()
         {
-            using (var codeStream = await StreamHelper.GetPackagedFileStreamAsync($"SamplePages/{Name}/{CodeFile}"))
+            using (var codeStream = await StreamHelper.GetPackagedFileStreamAsync(CodeFile.StartsWith('/') ? CodeFile : $"SamplePages/{Name}/{CodeFile}"))
             {
                 using (var streamreader = new StreamReader(codeStream.AsStream()))
                 {
@@ -187,7 +191,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
 
         public async Task<string> GetJavaScriptSourceAsync()
         {
-            using (var codeStream = await StreamHelper.GetPackagedFileStreamAsync($"SamplePages/{Name}/{JavaScriptCodeFile}"))
+            using (var codeStream = await StreamHelper.GetPackagedFileStreamAsync(JavaScriptCodeFile.StartsWith('/') ? JavaScriptCodeFile : $"SamplePages/{Name}/{JavaScriptCodeFile}"))
             {
                 using (var streamreader = new StreamReader(codeStream.AsStream()))
                 {
@@ -209,7 +213,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
             var filename = string.Empty;
             var localPath = string.Empty;
 
-            var docRegex = new Regex("^" + _repoOnlineRoot + "(?<branch>.+?)/docs/(?<file>.+)");
+            var docRegex = new Regex("^" + _docsOnlineRoot + "(?<branch>.+?)/docs/(?<file>.+)");
             var docMatch = docRegex.Match(DocumentationUrl);
             if (docMatch.Success)
             {
@@ -267,7 +271,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
                 {
                     using (var localDocsStream = await StreamHelper.GetPackagedFileStreamAsync($"docs/{filepath}"))
                     {
-                        var result = await localDocsStream.ReadTextAsync();
+                        var result = await localDocsStream.ReadTextAsync(Encoding.UTF8);
                         _cachedDocumentation = ProcessDocs(result);
                         _cachedPath = localPath;
                     }
@@ -448,12 +452,12 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
             if (_propertyDescriptor == null)
             {
                 // Get Xaml code
-                using (var codeStream = await StreamHelper.GetPackagedFileStreamAsync($"SamplePages/{Name}/{XamlCodeFile}"))
+                using (var codeStream = await StreamHelper.GetPackagedFileStreamAsync(XamlCodeFile.StartsWith('/') ? XamlCodeFile : $"SamplePages/{Name}/{XamlCodeFile}"))
                 {
                     XamlCode = await codeStream.ReadTextAsync(Encoding.UTF8);
 
                     // Look for @[] values and generate associated properties
-                    var regularExpression = new Regex(@"@\[(?<name>.+?)(:(?<type>.+?):(?<value>.+?)(:(?<parameters>.+?))?(:(?<options>.*))*)?\]@?");
+                    var regularExpression = new Regex("(?<=\\\")@\\[(?<name>.+?)(:(?<type>.+?):(?<value>.+?)(:(?<parameters>.+?))?(:(?<options>.*))*)?\\]@?(?=\\\")");
 
                     _propertyDescriptor = new PropertyDescriptor { Expando = new ExpandoObject() };
                     var proxy = (IDictionary<string, object>)_propertyDescriptor.Expando;
@@ -666,9 +670,9 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
                 }
             }
 
-            // Search in Microsoft.Toolkit.Uwp.UI.Controls.Graph
-            var graphControlsProxyType = ViewType.EmailOnly;
-            assembly = graphControlsProxyType.GetType().GetTypeInfo().Assembly;
+            // Search in Microsoft.Toolkit.Graph.Controls
+            var graphControlsProxyType = typeof(UserToPersonConverter);
+            assembly = graphControlsProxyType.GetTypeInfo().Assembly;
 
             foreach (var typeInfo in assembly.ExportedTypes)
             {

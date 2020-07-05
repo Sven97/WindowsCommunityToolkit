@@ -9,22 +9,24 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Microsoft.Toolkit.Uwp.UI.Controls.Design</RootNamespace>
     <AssemblyName>Microsoft.Toolkit.Uwp.UI.Controls.DataGrid.Design</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+    <AssetTargetFallback>$(AssetTargetFallback);uap10.0.16299</AssetTargetFallback>
   </PropertyGroup>
   <PropertyGroup>
     <TargetPlatformVersion>8.1</TargetPlatformVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>..\Microsoft.Toolkit.Uwp.UI.Controls.DataGrid\bin\Debug\uap10.0\Design\</OutputPath>
+    <OutputPath>..\Microsoft.Toolkit.Uwp.UI.Controls.DataGrid\bin\Debug\uap10.0.16299\Design\</OutputPath>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <OutputPath>..\Microsoft.Toolkit.Uwp.UI.Controls.DataGrid\bin\Release\uap10.0\Design\</OutputPath>
+    <OutputPath>..\Microsoft.Toolkit.Uwp.UI.Controls.DataGrid\bin\Release\uap10.0.16299\Design\</OutputPath>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x86</PlatformTarget>
     <Optimize>true</Optimize>
@@ -55,7 +57,7 @@
     <Reference Include="System.Xml" />
     <Reference Include="Windows, Version=255.255.255.255, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\10.0.17134.0\Windows.winmd</HintPath>
+      <HintPath>$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\10.0.17763.0\Windows.winmd</HintPath>
     </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
@@ -71,13 +73,12 @@
     <Reference Include="System.Xaml" />
     <Reference Include="System.Runtime.WindowsRuntime.UI.Xaml" />
     <Reference Include="Windows.Foundation.FoundationContract">
-      <HintPath>$(ProgramFiles)\Windows Kits\10\References\10.0.17134.0\Windows.Foundation.FoundationContract\3.0.0.0\Windows.Foundation.FoundationContract.winmd</HintPath>
+      <HintPath>$(ProgramFiles)\Windows Kits\10\References\10.0.17763.0\Windows.Foundation.FoundationContract\3.0.0.0\Windows.Foundation.FoundationContract.winmd</HintPath>
       <Aliases>WindowsRuntime</Aliases>
       <Private>False</Private>
     </Reference>
     <Reference Include="Windows.Foundation.UniversalApiContract">
-      <HintPath>$(ProgramFiles)\Windows Kits\10\References\10.0.17134.0\Windows.Foundation.UniversalApiContract\6.0.0.0\Windows.Foundation.UniversalApiContract.winmd</HintPath>
-
+      <HintPath>$(ProgramFiles)\Windows Kits\10\References\10.0.17763.0\Windows.Foundation.UniversalApiContract\7.0.0.0\Windows.Foundation.UniversalApiContract.winmd</HintPath>
       <Aliases>WindowsRuntime</Aliases>
       <Private>False</Private>
     </Reference>
@@ -112,7 +113,7 @@
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\Microsoft.Toolkit.Uwp.UI.Controls.DataGrid\bin\$(Configuration)\uap10.0\Microsoft.Toolkit.Uwp.UI.Controls.DataGrid.xml">
+    <EmbeddedResource Include="..\Microsoft.Toolkit.Uwp.UI.Controls.DataGrid\bin\$(Configuration)\uap10.0.16299\Microsoft.Toolkit.Uwp.UI.Controls.DataGrid.xml">
       <Link>Microsoft.Toolkit.Uwp.UI.Controls.DataGrid.xml</Link>
       <SubType>Designer</SubType>
     </EmbeddedResource>

@@ -6,8 +6,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using Microsoft.Toolkit.Uwp.SampleApp.Common;
 using Microsoft.Toolkit.Uwp.SampleApp.Controls;
 using Microsoft.Toolkit.Uwp.SampleApp.Models;
@@ -36,7 +36,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
             _themeListener = new ThemeListener();
 
             Current = this;
-            this.InitializeComponent();
+            InitializeComponent();
 
             _themeListener.ThemeChanged += (s) =>
             {
@@ -160,11 +160,11 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
             }));
         }
 
-        public async Task RefreshXamlRenderAsync()
+        public void RefreshXamlRender()
         {
             if (CurrentSample != null)
             {
-                var code = string.Empty;
+                string code;
                 if (InfoAreaPivot.SelectedItem == PropertiesPivotItem)
                 {
                     code = CurrentSample.BindedXamlCode;
@@ -176,7 +176,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
 
                 if (!string.IsNullOrWhiteSpace(code))
                 {
-                    await UpdateXamlRenderAsync(code);
+                    UpdateXamlRender(code);
                 }
             }
         }
@@ -197,6 +197,17 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
                     {
                         var pageInstance = Activator.CreateInstance(CurrentSample.PageType);
                         SampleContent.Content = pageInstance;
+
+                        // Some samples use the OnNavigatedTo and OnNavigatedFrom
+                        // Can't use Frame here because some samples depend on the current Frame
+                        MethodInfo method = CurrentSample.PageType.GetMethod(
+                            "OnNavigatedTo",
+                            BindingFlags.Instance | BindingFlags.NonPublic);
+
+                        if (method != null)
+                        {
+                            method.Invoke(pageInstance, new object[] { e });
+                        }
                     }
                     catch
                     {
@@ -213,26 +224,26 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
                     _onlyDocumentation = true;
                 }
 
-                DataContext = CurrentSample;
-
-                await Samples.PushRecentSample(CurrentSample);
-
-                var propertyDesc = CurrentSample.PropertyDescriptor;
-
                 InfoAreaPivot.Items.Clear();
-
-                if (propertyDesc != null)
-                {
-                    _xamlRenderer.DataContext = propertyDesc.Expando;
-                }
-
-                if (propertyDesc != null && propertyDesc.Options.Count > 0)
-                {
-                    InfoAreaPivot.Items.Add(PropertiesPivotItem);
-                }
 
                 if (CurrentSample.HasXAMLCode)
                 {
+                    // Load Sample Properties before we load sample (if we haven't before)
+                    await CurrentSample.PreparePropertyDescriptorAsync();
+
+                    // We only have properties on examples with live XAML
+                    var propertyDesc = CurrentSample.PropertyDescriptor;
+
+                    if (propertyDesc != null)
+                    {
+                        _xamlRenderer.DataContext = propertyDesc.Expando;
+                    }
+
+                    if (propertyDesc?.Options.Count > 0)
+                    {
+                        InfoAreaPivot.Items.Add(PropertiesPivotItem);
+                    }
+
                     if (AnalyticsInfo.VersionInfo.GetDeviceFormFactor() != DeviceFormFactor.Desktop || CurrentSample.DisableXamlEditorRendering)
                     {
                         // Only makes sense (and works) for now to show Live Xaml on Desktop, so fallback to old system here otherwise.
@@ -286,18 +297,23 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
                 {
                     GithubButton.Visibility = Visibility.Collapsed;
                 }
+                else
+                {
+                    GithubButton.Visibility = Visibility.Visible;
+                }
+
+                DataContext = CurrentSample;
 
                 if (InfoAreaPivot.Items.Count == 0)
                 {
                     SidePaneState = PaneState.None;
-                    _hasDocumentation = false;
                 }
                 else
                 {
                     SidePaneState = _onlyDocumentation ? PaneState.Full : PaneState.Normal;
                 }
 
-                Shell.Current.SetTitles($"{CurrentSample.CategoryName} > {CurrentSample.Name}");
+                Shell.Current.SetAppTitle($"{CurrentSample.CategoryName} > {CurrentSample.Name}");
             }
             else
             {
@@ -307,17 +323,28 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
             if (!CanChangePaneState)
             {
                 SampleTitleBar.Children.Remove(NarrowInfoButton);
-                PaneStates.States.Clear();
-                WindowStates.States.Clear();
+            }
+
+            if (e.NavigationMode != NavigationMode.Back)
+            {
+                var nop = Samples.PushRecentSample(CurrentSample);
             }
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
-            if (SamplePage is ISampleNavigation nav)
+
+            if (SamplePage != null)
             {
-                nav.NavigatingAway();
+                MethodInfo method = CurrentSample.PageType.GetMethod(
+                    "OnNavigatedFrom",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+
+                if (method != null)
+                {
+                    method.Invoke(SamplePage, new object[] { e });
+                }
             }
 
             XamlCodeEditor = null;
@@ -331,10 +358,10 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
         {
             if (CurrentSample != null && CurrentSample.HasXAMLCode)
             {
-                this._lastRenderedProperties = true;
+                _lastRenderedProperties = true;
 
                 // Called to load the sample initially as we don't get an Item Pivot Selection Changed with Sample Loaded yet.
-                var t = UpdateXamlRenderAsync(CurrentSample.BindedXamlCode);
+                UpdateXamlRender(CurrentSample.BindedXamlCode);
             }
         }
 
@@ -360,7 +387,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
                 {
                     _lastRenderedProperties = true;
 
-                    var t = UpdateXamlRenderAsync(CurrentSample.BindedXamlCode);
+                    UpdateXamlRender(CurrentSample.BindedXamlCode);
                 }
 
                 return;
@@ -374,7 +401,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
                 // If we switch to the Live Preview, then we want to use the Value based Text
                 XamlCodeEditor.Text = CurrentSample.UpdatedXamlCode;
 
-                var t = UpdateXamlRenderAsync(CurrentSample.UpdatedXamlCode);
+                UpdateXamlRender(CurrentSample.UpdatedXamlCode);
                 await XamlCodeEditor.ResetPosition();
 
                 XamlCodeEditor.Focus(FocusState.Programmatic);
@@ -408,16 +435,22 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
         {
             await Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
             {
-                var t = UpdateXamlRenderAsync(XamlCodeEditor.Text);
+                UpdateXamlRender(XamlCodeEditor.Text);
             });
         }
 
         private async void DocumentationTextblock_OnLinkClicked(object sender, LinkClickedEventArgs e)
         {
             TrackingManager.TrackEvent("Link", e.Link);
-            if (Uri.TryCreate(e.Link, UriKind.Absolute, out Uri result))
+            var link = e.Link;
+            if (e.Link.EndsWith(".md"))
             {
-                await Launcher.LaunchUriAsync(new Uri(e.Link));
+                link = string.Format("https://docs.microsoft.com/en-us/windows/communitytoolkit/{0}/{1}", CurrentSample.CategoryName.ToLower(), link.Replace(".md", string.Empty));
+            }
+
+            if (Uri.TryCreate(link, UriKind.Absolute, out Uri result))
+            {
+                await Launcher.LaunchUriAsync(result);
             }
         }
 
@@ -470,8 +503,13 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
             }
         }
 
-        private async Task UpdateXamlRenderAsync(string text)
+        private void UpdateXamlRender(string text)
         {
+            if (XamlCodeEditor == null)
+            {
+                return;
+            }
+
             // Hide any Previous Errors
             XamlCodeEditor.ClearErrors();
 
@@ -509,16 +547,29 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
                 }
 
                 // Tell the page we've finished with an update to the XAML contents, after the control has rendered.
-                await Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+                if (element is FrameworkElement fe)
                 {
-                    (SamplePage as IXamlRenderListener)?.OnXamlRendered(element as FrameworkElement);
-                });
+                    fe.Loaded += XamlFrameworkElement_Loaded;
+                }
             }
             else if (_xamlRenderer.Errors.Count > 0)
             {
                 var error = _xamlRenderer.Errors.First();
 
                 XamlCodeEditor.ReportError(error);
+            }
+        }
+
+        private async void XamlFrameworkElement_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe)
+            {
+                fe.Loaded -= XamlFrameworkElement_Loaded;
+
+                await Dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
+                {
+                    (SamplePage as IXamlRenderListener)?.OnXamlRendered(fe);
+                });
             }
         }
 
@@ -642,7 +693,7 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
 
         private Page SamplePage => SampleContent.Content as Page;
 
-        private bool CanChangePaneState => _hasDocumentation && !_onlyDocumentation;
+        private bool CanChangePaneState => !_onlyDocumentation;
 
         private XamlRenderService _xamlRenderer = new XamlRenderService();
         private bool _lastRenderedProperties = true;
@@ -651,7 +702,6 @@ namespace Microsoft.Toolkit.Uwp.SampleApp
         private bool _useBackground = false;
 
         private PaneState _paneState;
-        private bool _hasDocumentation = true;
         private bool _onlyDocumentation;
         private string documentationPath;
 

@@ -55,7 +55,7 @@ namespace Microsoft.Toolkit.Parsers.Markdown
         /// <param name="markdownText"> The markdown text. </param>
         public void Parse(string markdownText)
         {
-            Blocks = Parse(markdownText, 0, markdownText.Length, quoteDepth: 0, actualEnd: out int actualEnd);
+            Blocks = Parse(markdownText, 0, markdownText.Length, quoteDepth: 0, actualEnd: out _);
 
             // Remove any references from the list of blocks, and add them to a dictionary.
             for (int i = Blocks.Count - 1; i >= 0; i--)
@@ -224,7 +224,21 @@ namespace Microsoft.Toolkit.Parsers.Markdown
                     // Or a quote if the line starts with a greater than character (optionally preceded by whitespace).
                     // Or a horizontal rule if the line contains nothing but 3 '*', '-' or '_' characters (with optional whitespace).
                     MarkdownBlock newBlockElement = null;
-                    if (nonSpaceChar == '#' && nonSpacePos == startOfLine)
+                    if (nonSpaceChar == '-' && nonSpacePos == startOfLine)
+                    {
+                        // Yaml Header
+                        newBlockElement = YamlHeaderBlock.Parse(markdown, startOfLine, markdown.Length, out startOfLine);
+                        if (newBlockElement != null)
+                        {
+                            realStartOfLine = startOfLine;
+                            endOfLine = startOfLine + 3;
+                            startOfNextLine = Common.FindNextSingleNewLine(markdown, startOfLine, end, out startOfNextLine);
+
+                            paragraphText.Clear();
+                        }
+                    }
+
+                    if (newBlockElement == null && nonSpaceChar == '#' && nonSpacePos == startOfLine)
                     {
                         // Hash-prefixed header.
                         newBlockElement = HeaderBlock.ParseHashPrefixedHeader(markdown, startOfLine, endOfLine);
